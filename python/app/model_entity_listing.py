@@ -36,6 +36,13 @@ class SgEntityListingModel(ShotgunModel):
     # maximum number of items to show in the listings
     SG_RECORD_LIMIT = 50
 
+    VIEW_DETAILS_DATA_ROLE = QtCore.Qt.UserRole + 109
+    VIEW_SHORT_TEXT_ROLE = QtCore.Qt.UserRole + 111
+    VIEW_ITEM_HEIGHT_ROLE = QtCore.Qt.UserRole + 112
+    VIEW_ITEM_MOUSE_POS_ROLE = QtCore.Qt.UserRole + 113
+    VIEW_ITEM_TITLE_ROLE = QtCore.Qt.UserRole + 114
+    VIEW_ITEM_SUBTITLE_ROLE = QtCore.Qt.UserRole + 115
+
     def __init__(self, entity_type, parent, bg_task_manager):
         """
         Constructor.
@@ -46,6 +53,10 @@ class SgEntityListingModel(ShotgunModel):
         self._sg_location = None
         self._sg_formatter = ShotgunTypeFormatter(entity_type)
 
+        app = sgtk.platform.current_bundle()
+        view_config_hook_path = app.get_setting("view_configuration_hook")
+        self.view_config_hook = app.create_hook_instance(view_config_hook_path)
+
         # init base class
         ShotgunModel.__init__(
             self,
@@ -53,6 +64,40 @@ class SgEntityListingModel(ShotgunModel):
             download_thumbs=True,
             bg_load_thumbs=True,
             bg_task_manager=bg_task_manager,
+        )
+
+    def _populate_item(self, item, sg_data):
+        """
+        Override
+        """
+
+        def exec_hook_method(hook, method_name, item, sg_data):
+            hook_method = getattr(hook, method_name)
+            return hook_method(item, sg_data) if hook_method else None
+
+        item.setData(
+            lambda: exec_hook_method(
+                self.view_config_hook, "get_item_title", item, sg_data
+            ),
+            SgEntityListingModel.VIEW_ITEM_TITLE_ROLE,
+        )
+        item.setData(
+            lambda: exec_hook_method(
+                self.view_config_hook, "get_item_subtitle", item, sg_data
+            ),
+            SgEntityListingModel.VIEW_ITEM_SUBTITLE_ROLE,
+        )
+        item.setData(
+            lambda: exec_hook_method(
+                self.view_config_hook, "get_item_details", item, sg_data
+            ),
+            SgEntityListingModel.VIEW_DETAILS_DATA_ROLE,
+        )
+        item.setData(
+            lambda: exec_hook_method(
+                self.view_config_hook, "get_item_short_text", item, sg_data
+            ),
+            SgEntityListingModel.VIEW_SHORT_TEXT_ROLE,
         )
 
     ############################################################################################

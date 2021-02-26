@@ -56,6 +56,9 @@ overlay_module = sgtk.platform.import_framework(
 )
 ShotgunModelOverlayWidget = overlay_module.ShotgunModelOverlayWidget
 
+delegates = sgtk.platform.import_framework("tk-framework-qtwidgets", "delegates")
+ViewItemDelegate = delegates.ViewItemDelegate
+
 # maximum size of the details field in the top part of the UI
 MAX_LEN_UPPER_BODY_DETAILS = 1200
 
@@ -246,7 +249,8 @@ class AppDialog(QtGui.QWidget):
         idx = (self.ENTITY_PAGE_IDX, self.ENTITY_TAB_NOTES)
         self._detail_tabs[idx] = {
             "model_class": SgEntityListingModel,
-            "delegate_class": ListItemDelegate,
+            # "delegate_class": ListItemDelegate,
+            "delegate": ViewItemDelegate(self.ui.entity_note_view),
             "view": self.ui.entity_note_view,
             "entity_type": "Note",
         }
@@ -254,7 +258,8 @@ class AppDialog(QtGui.QWidget):
         idx = (self.ENTITY_PAGE_IDX, self.ENTITY_TAB_VERSIONS)
         self._detail_tabs[idx] = {
             "model_class": SgVersionModel,
-            "delegate_class": ListItemDelegate,
+            # "delegate_class": ListItemDelegate,
+            "delegate": ViewItemDelegate(self.ui.entity_version_view),
             "view": self.ui.entity_version_view,
             "entity_type": "Version",
         }
@@ -262,7 +267,8 @@ class AppDialog(QtGui.QWidget):
         idx = (self.ENTITY_PAGE_IDX, self.ENTITY_TAB_PUBLISHES)
         self._detail_tabs[idx] = {
             "model_class": SgLatestPublishListingModel,
-            "delegate_class": ListItemDelegate,
+            # "delegate_class": ListItemDelegate,
+            "delegate": ViewItemDelegate(self.ui.entity_publish_view),
             "view": self.ui.entity_publish_view,
             "entity_type": self._publish_entity_type,
         }
@@ -270,7 +276,8 @@ class AppDialog(QtGui.QWidget):
         idx = (self.ENTITY_PAGE_IDX, self.ENTITY_TAB_TASKS)
         self._detail_tabs[idx] = {
             "model_class": SgTaskListingModel,
-            "delegate_class": ListItemDelegate,
+            # "delegate_class": ListItemDelegate,
+            "delegate": ViewItemDelegate(self.ui.entity_task_view),
             "view": self.ui.entity_task_view,
             "entity_type": "Task",
         }
@@ -279,7 +286,8 @@ class AppDialog(QtGui.QWidget):
         idx = (self.PUBLISH_PAGE_IDX, self.PUBLISH_TAB_HISTORY)
         self._detail_tabs[idx] = {
             "model_class": SgPublishHistoryListingModel,
-            "delegate_class": ListItemDelegate,
+            # "delegate_class": ListItemDelegate,
+            "delegate": ViewItemDelegate(self.ui.publish_history_view),
             "view": self.ui.publish_history_view,
             "entity_type": self._publish_entity_type,
         }
@@ -287,7 +295,8 @@ class AppDialog(QtGui.QWidget):
         idx = (self.PUBLISH_PAGE_IDX, self.PUBLISH_TAB_CONTAINS)
         self._detail_tabs[idx] = {
             "model_class": SgPublishDependencyDownstreamListingModel,
-            "delegate_class": ListItemDelegate,
+            # "delegate_class": ListItemDelegate,
+            "delegate": ViewItemDelegate(self.ui.publish_upstream_view),
             "view": self.ui.publish_upstream_view,
             "entity_type": self._publish_entity_type,
         }
@@ -295,7 +304,8 @@ class AppDialog(QtGui.QWidget):
         idx = (self.PUBLISH_PAGE_IDX, self.PUBLISH_TAB_USED_IN)
         self._detail_tabs[idx] = {
             "model_class": SgPublishDependencyUpstreamListingModel,
-            "delegate_class": ListItemDelegate,
+            # "delegate_class": ListItemDelegate,
+            "delegate": ViewItemDelegate(self.ui.publish_downstream_view),
             "view": self.ui.publish_downstream_view,
             "entity_type": self._publish_entity_type,
         }
@@ -304,7 +314,8 @@ class AppDialog(QtGui.QWidget):
         idx = (self.VERSION_PAGE_IDX, self.VERSION_TAB_NOTES)
         self._detail_tabs[idx] = {
             "model_class": SgEntityListingModel,
-            "delegate_class": ListItemDelegate,
+            # "delegate_class": ListItemDelegate,
+            "delegate": ViewItemDelegate(self.ui.version_note_view),
             "view": self.ui.version_note_view,
             "entity_type": "Note",
         }
@@ -312,10 +323,51 @@ class AppDialog(QtGui.QWidget):
         idx = (self.VERSION_PAGE_IDX, self.VERSION_TAB_PUBLISHES)
         self._detail_tabs[idx] = {
             "model_class": SgLatestPublishListingModel,
-            "delegate_class": ListItemDelegate,
+            # "delegate_class": ListItemDelegate,
+            "delegate": ViewItemDelegate(self.ui.version_publish_view),
             "view": self.ui.version_publish_view,
             "entity_type": self._publish_entity_type,
         }
+
+        # TEMP
+        # Delegate signal/slots
+        self._hover_index = None
+
+        def change_cursor(pos, index, hit):
+            if not self._hover_index:
+                self._hover_index = index
+
+            if self._hover_index != index:
+                self._hover_index.model().setData(
+                    self._hover_index,
+                    None,
+                    SgEntityListingModel.VIEW_ITEM_MOUSE_POS_ROLE,
+                )
+                self._hover_index = index
+
+            shape = QtCore.Qt.PointingHandCursor if hit else QtCore.Qt.ArrowCursor
+            self.setCursor(shape)
+
+        def show_action_menu(model, view, pos, index):
+            # Build a menu with all the actions.
+            # menu = QtGui.QMenu(self)
+
+            source_index = index.model().mapToSource(index)
+            source_model = index.model().sourceModel()
+
+            item = source_model.itemFromIndex(source_index)
+            sg_data = item.get_sg_data()
+
+            num_actions = self._action_manager.populate_menu(
+                self._menu, sg_data, self._action_manager.UI_AREA_MAIN
+            )
+            # actions = self._action_manager.get_actions_for_publishes(
+            # self.selected_publishes, self._action_manager.UI_AREA_MAIN
+            # )
+            # menu.addActions(actions)
+
+            # Wait for the user to pick something.
+            self._menu.exec_(view.mapToGlobal(pos))
 
         # now initialize all tabs. This will add two model and delegate keys
         # to all the dicts
@@ -323,7 +375,8 @@ class AppDialog(QtGui.QWidget):
         for tab_dict in self._detail_tabs.values():
 
             ModelClass = tab_dict["model_class"]
-            DelegateClass = tab_dict["delegate_class"]
+            # DelegateClass = tab_dict["delegate_class"]
+            DelegateClass = tab_dict.get("delegate_class")
 
             self._app.log_debug("Creating %r..." % ModelClass)
 
@@ -351,11 +404,42 @@ class AppDialog(QtGui.QWidget):
             tab_dict["view"].setModel(tab_dict["sort_proxy"])
             # set up a global on-click handler for
             tab_dict["view"].doubleClicked.connect(self._on_entity_doubleclicked)
-            # create delegate
-            tab_dict["delegate"] = DelegateClass(tab_dict["view"], self._action_manager)
-            tab_dict["delegate"].change_work_area.connect(self._change_work_area)
+
+            if DelegateClass:
+                # create delegate
+                tab_dict["delegate"] = DelegateClass(
+                    tab_dict["view"], self._action_manager
+                )
+                tab_dict["delegate"].change_work_area.connect(self._change_work_area)
+
+            delegate = tab_dict.get("delegate")
+            if delegate:
+                if isinstance(delegate, ViewItemDelegate):
+                    delegate.title_role = SgEntityListingModel.VIEW_ITEM_TITLE_ROLE
+                    delegate.subtitle_role = (
+                        SgEntityListingModel.VIEW_ITEM_SUBTITLE_ROLE
+                    )
+                    delegate.details_role = SgEntityListingModel.VIEW_DETAILS_DATA_ROLE
+                    delegate.short_text_role = SgEntityListingModel.VIEW_SHORT_TEXT_ROLE
+                    delegate.expand_role = SgEntityListingModel.VIEW_ITEM_HEIGHT_ROLE
+                    delegate.mouse_pos_role = (
+                        SgEntityListingModel.VIEW_ITEM_MOUSE_POS_ROLE
+                    )
+                    # delegate.row_height = 102
+                    delegate.context_menu_icon = ":/tk_multi_infopanel/down_arrow.png"
+
+                    delegate.hit_click_target.connect(change_cursor)
+                    delegate.context_menu_requested.connect(
+                        lambda pos, index: show_action_menu(
+                            tab_dict["model"], tab_dict["view"], pos, index
+                        )
+                    )
+
+                    tab_dict["view"].setUniformItemSizes(False)
+                    tab_dict["view"].setMouseTracking(True)
+
             # hook up delegate renderer with view
-            tab_dict["view"].setItemDelegate(tab_dict["delegate"])
+            tab_dict["view"].setItemDelegate(delegate)
             # and set up a spinner overlay
             tab_dict["overlay"] = NotFoundModelOverlay(
                 tab_dict["model"], tab_dict["view"]

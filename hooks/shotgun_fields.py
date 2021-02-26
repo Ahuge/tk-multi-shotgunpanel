@@ -86,7 +86,7 @@ class ShotgunFields(HookBaseClass):
             values[
                 "body"
             ] = """
-                {published_file_type} by {created_by}<br>
+                {published_file_type} by {created_by}<br/>
                 <b>Comments:</b> {description}
                 """
 
@@ -111,8 +111,8 @@ class ShotgunFields(HookBaseClass):
             values[
                 "body"
             ] = """
-                {[Assigned to ]task_assignees[<br>]}
-                {entity::showtype[<br>]}
+                {[Assigned to ]task_assignees[<br/>]}
+                {entity::showtype[<br/>]}
                 {[Starts: ]start_date}{[ Due:]due_date}
                 """
 
