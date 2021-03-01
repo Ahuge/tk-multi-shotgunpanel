@@ -149,6 +149,8 @@ class AppDialog(QtGui.QWidget):
         # where it shows up elsewhere on screen (as in Houdini)
         self._menu = shotgun_menus.ShotgunMenu(self.ui.action_button)
         self.ui.action_button.setMenu(self._menu)
+        # TEMP
+        # self._action_menu = shotgun_menus.ShotgunMenu()
 
         # this forces the menu to be right aligned with the button. This is
         # preferable since many DCCs show the embed panel on the far right. In
@@ -349,25 +351,38 @@ class AppDialog(QtGui.QWidget):
             self.setCursor(shape)
 
         def show_action_menu(model, view, pos, index):
-            # Build a menu with all the actions.
-            # menu = QtGui.QMenu(self)
-
             source_index = index.model().mapToSource(index)
             source_model = index.model().sourceModel()
-
             item = source_model.itemFromIndex(source_index)
             sg_data = item.get_sg_data()
 
-            num_actions = self._action_manager.populate_menu(
-                self._menu, sg_data, self._action_manager.UI_AREA_MAIN
-            )
-            # actions = self._action_manager.get_actions_for_publishes(
-            # self.selected_publishes, self._action_manager.UI_AREA_MAIN
+            # menu = shotgun_menus.ShotgunMenu(view)
+            menu = QtGui.QMenu(self)
+            # num_actions = self._action_manager.populate_menu(
+            # menu, sg_data, self._action_manager.UI_AREA_MAIN
             # )
+            for group_name, actions in self._action_manager._get_actions(
+                sg_data, self._action_manager.UI_AREA_MAIN
+            ).items():
+                # menu.add_group(actions, group_name)
+                menu.addActions(actions)
+            # if num_actions <= 0:
+            # if not actions:
+            # actions = [QtGui.QAction("No Actions", None)]
+            # self._action_menu.addAction(no_action)
+            # menu.add_label("No Actions")
             # menu.addActions(actions)
 
             # Wait for the user to pick something.
-            self._menu.exec_(view.mapToGlobal(pos))
+            menu.exec_(view.mapToGlobal(pos))
+
+        def change_work_area(pos, index):
+            source_index = index.model().mapToSource(index)
+            source_model = index.model().sourceModel()
+            item = source_model.itemFromIndex(source_index)
+            sg_data = item.get_sg_data()
+            # Check type and id exist
+            self._change_work_area(sg_data["type"], sg_data["id"])
 
         # now initialize all tabs. This will add two model and delegate keys
         # to all the dicts
@@ -415,6 +430,7 @@ class AppDialog(QtGui.QWidget):
             delegate = tab_dict.get("delegate")
             if delegate:
                 if isinstance(delegate, ViewItemDelegate):
+                    delegate.text_document_padding = 10
                     delegate.title_role = SgEntityListingModel.VIEW_ITEM_TITLE_ROLE
                     delegate.subtitle_role = (
                         SgEntityListingModel.VIEW_ITEM_SUBTITLE_ROLE
@@ -425,15 +441,74 @@ class AppDialog(QtGui.QWidget):
                     delegate.mouse_pos_role = (
                         SgEntityListingModel.VIEW_ITEM_MOUSE_POS_ROLE
                     )
-                    # delegate.row_height = 102
-                    delegate.context_menu_icon = ":/tk_multi_infopanel/down_arrow.png"
+                    # delegate.row_width = 300
+
+                    delegate.add_actions(
+                        [
+                            {
+                                "name": "",
+                                "icon": ":/tk_multi_infopanel/down_arrow.png",
+                                "callback": lambda pos, index: show_action_menu(
+                                    tab_dict["model"], tab_dict["view"], pos, index
+                                ),
+                            },
+                            {
+                                "name": "",
+                                "icon": ":/tk_multi_infopanel/pin.png",
+                                "callback": change_work_area,
+                            },
+                        ],
+                        ViewItemDelegate.BOTTOM_RIGHT,
+                    )
+                    delegate.add_actions(
+                        [
+                            # {
+                            #     "name": "",
+                            #     "icon": ":/tk_multi_infopanel/down_arrow.png",
+                            #     "callback": lambda pos, index: show_action_menu(tab_dict["model"], tab_dict["view"], pos, index)
+                            # },
+                            # {
+                            #     "name": "",
+                            #     "icon": ":/tk_multi_infopanel/pin.png",
+                            #     "callback": change_work_area
+                            # },
+                        ],
+                        ViewItemDelegate.TOP_LEFT,
+                    )
+                    delegate.add_actions(
+                        [
+                            # {
+                            #     "name": "",
+                            #     "icon": ":/tk_multi_infopanel/down_arrow.png",
+                            #     "callback": lambda pos, index: show_action_menu(tab_dict["model"], tab_dict["view"], pos, index)
+                            # },
+                            # {
+                            #     "name": "",
+                            #     "icon": ":/tk_multi_infopanel/pin.png",
+                            #     "callback": change_work_area
+                            # },
+                        ],
+                        ViewItemDelegate.BOTTOM_LEFT,
+                    )
+                    delegate.add_actions(
+                        [
+                            {
+                                "name": "",
+                                "icon": ":/tk_multi_infopanel/down_arrow.png",
+                                "callback": lambda pos, index: show_action_menu(
+                                    tab_dict["model"], tab_dict["view"], pos, index
+                                ),
+                            },
+                            # {
+                            #     "name": "",
+                            #     "icon": ":/tk_multi_infopanel/pin.png",
+                            #     "callback": change_work_area
+                            # },
+                        ],
+                        ViewItemDelegate.TOP_RIGHT,
+                    )
 
                     delegate.hit_click_target.connect(change_cursor)
-                    delegate.context_menu_requested.connect(
-                        lambda pos, index: show_action_menu(
-                            tab_dict["model"], tab_dict["view"], pos, index
-                        )
-                    )
 
                     tab_dict["view"].setUniformItemSizes(False)
                     tab_dict["view"].setMouseTracking(True)
