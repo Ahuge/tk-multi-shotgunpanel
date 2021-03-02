@@ -339,6 +339,9 @@ class AppDialog(QtGui.QWidget):
         # Delegate signal/slots
         self._hover_index = None
 
+        def _model_reset():
+            self._hover_index = None
+
         # now initialize all tabs. This will add two model and delegate keys
         # to all the dicts
 
@@ -354,7 +357,7 @@ class AppDialog(QtGui.QWidget):
             tab_dict["model"] = ModelClass(
                 tab_dict["entity_type"], tab_dict["view"], self._task_manager
             )
-            # tab_dict["model"].modelReset.connect(self.set_delegate)
+            tab_dict["model"].modelReset.connect(_model_reset)
 
             # create proxy for sorting
             tab_dict["sort_proxy"] = QtGui.QSortFilterProxyModel(self)
@@ -500,7 +503,7 @@ class AppDialog(QtGui.QWidget):
         delegate.hit_click_target.connect(self.change_cursor)
 
     def change_cursor(self, pos, index, hit):
-        if not self._hover_index:
+        if not self._hover_index or not self._hover_index.isValid():
             self._hover_index = index
 
         if self._hover_index != index:
