@@ -47,6 +47,10 @@ shotgun_data = sgtk.platform.import_framework(
 shotgun_globals = sgtk.platform.import_framework(
     "tk-framework-shotgunutils", "shotgun_globals"
 )
+shotgun_model = sgtk.platform.import_framework(
+    "tk-framework-shotgunutils", "shotgun_model"
+)
+ShotgunModel = shotgun_model.ShotgunModel
 
 shotgun_menus = sgtk.platform.import_framework(
     "tk-framework-qtwidgets", "shotgun_menus"
@@ -335,55 +339,6 @@ class AppDialog(QtGui.QWidget):
         # Delegate signal/slots
         self._hover_index = None
 
-        def change_cursor(pos, index, hit):
-            if not self._hover_index:
-                self._hover_index = index
-
-            if self._hover_index != index:
-                self._hover_index.model().setData(
-                    self._hover_index,
-                    None,
-                    SgEntityListingModel.VIEW_ITEM_MOUSE_POS_ROLE,
-                )
-                self._hover_index = index
-
-            shape = QtCore.Qt.PointingHandCursor if hit else QtCore.Qt.ArrowCursor
-            self.setCursor(shape)
-
-        def show_action_menu(model, view, pos, index):
-            source_index = index.model().mapToSource(index)
-            source_model = index.model().sourceModel()
-            item = source_model.itemFromIndex(source_index)
-            sg_data = item.get_sg_data()
-
-            # menu = shotgun_menus.ShotgunMenu(view)
-            menu = QtGui.QMenu(self)
-            # num_actions = self._action_manager.populate_menu(
-            # menu, sg_data, self._action_manager.UI_AREA_MAIN
-            # )
-            for group_name, actions in self._action_manager._get_actions(
-                sg_data, self._action_manager.UI_AREA_MAIN
-            ).items():
-                # menu.add_group(actions, group_name)
-                menu.addActions(actions)
-            # if num_actions <= 0:
-            # if not actions:
-            # actions = [QtGui.QAction("No Actions", None)]
-            # self._action_menu.addAction(no_action)
-            # menu.add_label("No Actions")
-            # menu.addActions(actions)
-
-            # Wait for the user to pick something.
-            menu.exec_(view.mapToGlobal(pos))
-
-        def change_work_area(pos, index):
-            source_index = index.model().mapToSource(index)
-            source_model = index.model().sourceModel()
-            item = source_model.itemFromIndex(source_index)
-            sg_data = item.get_sg_data()
-            # Check type and id exist
-            self._change_work_area(sg_data["type"], sg_data["id"])
-
         # now initialize all tabs. This will add two model and delegate keys
         # to all the dicts
 
@@ -399,6 +354,7 @@ class AppDialog(QtGui.QWidget):
             tab_dict["model"] = ModelClass(
                 tab_dict["entity_type"], tab_dict["view"], self._task_manager
             )
+            # tab_dict["model"].modelReset.connect(self.set_delegate)
 
             # create proxy for sorting
             tab_dict["sort_proxy"] = QtGui.QSortFilterProxyModel(self)
@@ -428,90 +384,10 @@ class AppDialog(QtGui.QWidget):
                 tab_dict["delegate"].change_work_area.connect(self._change_work_area)
 
             delegate = tab_dict.get("delegate")
-            if delegate:
-                if isinstance(delegate, ViewItemDelegate):
-                    delegate.text_document_padding = 10
-                    delegate.title_role = SgEntityListingModel.VIEW_ITEM_TITLE_ROLE
-                    delegate.subtitle_role = (
-                        SgEntityListingModel.VIEW_ITEM_SUBTITLE_ROLE
-                    )
-                    delegate.details_role = SgEntityListingModel.VIEW_DETAILS_DATA_ROLE
-                    delegate.short_text_role = SgEntityListingModel.VIEW_SHORT_TEXT_ROLE
-                    delegate.expand_role = SgEntityListingModel.VIEW_ITEM_HEIGHT_ROLE
-                    delegate.mouse_pos_role = (
-                        SgEntityListingModel.VIEW_ITEM_MOUSE_POS_ROLE
-                    )
-                    # delegate.row_width = 300
-
-                    delegate.add_actions(
-                        [
-                            {
-                                "name": "",
-                                "icon": ":/tk_multi_infopanel/down_arrow.png",
-                                "callback": lambda pos, index: show_action_menu(
-                                    tab_dict["model"], tab_dict["view"], pos, index
-                                ),
-                            },
-                            {
-                                "name": "",
-                                "icon": ":/tk_multi_infopanel/pin.png",
-                                "callback": change_work_area,
-                            },
-                        ],
-                        ViewItemDelegate.BOTTOM_RIGHT,
-                    )
-                    delegate.add_actions(
-                        [
-                            # {
-                            #     "name": "",
-                            #     "icon": ":/tk_multi_infopanel/down_arrow.png",
-                            #     "callback": lambda pos, index: show_action_menu(tab_dict["model"], tab_dict["view"], pos, index)
-                            # },
-                            # {
-                            #     "name": "",
-                            #     "icon": ":/tk_multi_infopanel/pin.png",
-                            #     "callback": change_work_area
-                            # },
-                        ],
-                        ViewItemDelegate.TOP_LEFT,
-                    )
-                    delegate.add_actions(
-                        [
-                            # {
-                            #     "name": "",
-                            #     "icon": ":/tk_multi_infopanel/down_arrow.png",
-                            #     "callback": lambda pos, index: show_action_menu(tab_dict["model"], tab_dict["view"], pos, index)
-                            # },
-                            # {
-                            #     "name": "",
-                            #     "icon": ":/tk_multi_infopanel/pin.png",
-                            #     "callback": change_work_area
-                            # },
-                        ],
-                        ViewItemDelegate.BOTTOM_LEFT,
-                    )
-                    delegate.add_actions(
-                        [
-                            {
-                                "name": "",
-                                "icon": ":/tk_multi_infopanel/down_arrow.png",
-                                "callback": lambda pos, index: show_action_menu(
-                                    tab_dict["model"], tab_dict["view"], pos, index
-                                ),
-                            },
-                            # {
-                            #     "name": "",
-                            #     "icon": ":/tk_multi_infopanel/pin.png",
-                            #     "callback": change_work_area
-                            # },
-                        ],
-                        ViewItemDelegate.TOP_RIGHT,
-                    )
-
-                    delegate.hit_click_target.connect(change_cursor)
-
-                    tab_dict["view"].setUniformItemSizes(False)
-                    tab_dict["view"].setMouseTracking(True)
+            if delegate and isinstance(delegate, ViewItemDelegate):
+                self.update_delegate(tab_dict, delegate)
+            tab_dict["view"].setUniformItemSizes(False)
+            tab_dict["view"].setMouseTracking(True)
 
             # hook up delegate renderer with view
             tab_dict["view"].setItemDelegate(delegate)
@@ -562,6 +438,112 @@ class AppDialog(QtGui.QWidget):
         self._overlay.show_message_pixmap(splash_pix)
         QtCore.QCoreApplication.processEvents()
         QtCore.QTimer.singleShot(SPLASH_UI_TIME_MILLISECONDS, self._overlay.hide)
+
+    def set_delegate(self):
+        for tab_dict in self._detail_tabs.values():
+            delegate = tab_dict.get("delegate")
+            if delegate and isinstance(delegate, ViewItemDelegate):
+                delegate = ViewItemDelegate(tab_dict["view"])
+                self.update_delegate(tab_dict, delegate)
+
+            cur_delegate = tab_dict["view"].itemDelegate()
+            tab_dict["view"].setItemDelegate(delegate)
+            cur_delegate = None
+
+    def update_delegate(self, tab_dict, delegate):
+        delegate.item_rect_padding = 10
+        delegate.title_role = ShotgunModel.VIEW_ITEM_TITLE_ROLE
+        delegate.subtitle_role = SgEntityListingModel.VIEW_ITEM_SUBTITLE_ROLE
+        delegate.details_role = SgEntityListingModel.VIEW_DETAILS_DATA_ROLE
+        delegate.expand_role = ShotgunModel.VIEW_ITEM_HEIGHT_ROLE
+        delegate.mouse_pos_role = ShotgunModel.VIEW_ITEM_MOUSE_POS_ROLE
+        delegate.row_width = 300
+
+        if self._app.get_setting("enable_context_switch"):
+            delegate.add_actions(
+                [
+                    {
+                        "name": "",
+                        "icon": ":/tk_multi_infopanel/pin.png",
+                        "callback": self.change_work_area,
+                    },
+                ],
+                ViewItemDelegate.BOTTOM_RIGHT,
+            )
+        delegate.add_actions(
+            [], ViewItemDelegate.BOTTOM_RIGHT,
+        )
+        delegate.add_actions(
+            [], ViewItemDelegate.TOP_LEFT,
+        )
+        delegate.add_actions(
+            [], ViewItemDelegate.BOTTOM_LEFT,
+        )
+        delegate.add_actions(
+            [
+                {
+                    "name": "",
+                    "icon": ":/tk_multi_infopanel/down_arrow.png",
+                    "callback": lambda pos, index: self.show_action_menu(
+                        tab_dict["view"], pos, index
+                    ),
+                },
+                # {
+                #     "name": "",
+                #     "icon": ":/tk_multi_infopanel/pin.png",
+                #     "callback": change_work_area
+                # },
+            ],
+            ViewItemDelegate.TOP_RIGHT,
+        )
+
+        delegate.hit_click_target.connect(self.change_cursor)
+
+    def change_cursor(self, pos, index, hit):
+        if not self._hover_index:
+            self._hover_index = index
+
+        if self._hover_index != index:
+            self._hover_index.model().setData(
+                self._hover_index, None, SgEntityListingModel.VIEW_ITEM_MOUSE_POS_ROLE,
+            )
+            self._hover_index = index
+
+        shape = QtCore.Qt.PointingHandCursor if hit else QtCore.Qt.ArrowCursor
+        self.setCursor(shape)
+
+    def change_work_area(self, pos, index):
+        source_index = index.model().mapToSource(index)
+        source_model = index.model().sourceModel()
+        item = source_model.itemFromIndex(source_index)
+        sg_data = item.get_sg_data()
+        # Check type and id exist
+        self._change_work_area(sg_data["type"], sg_data["id"])
+
+    def show_action_menu(self, view, pos, index):
+        source_index = index.model().mapToSource(index)
+        source_model = index.model().sourceModel()
+        item = source_model.itemFromIndex(source_index)
+        sg_data = item.get_sg_data()
+
+        menu = shotgun_menus.ShotgunMenu(view)
+        # menu = QtGui.QMenu(self)
+
+        num_actions = self._action_manager.populate_menu(
+            menu, sg_data, self._action_manager.UI_AREA_MAIN
+        )
+        # for group_name, actions in self._action_manager._get_actions(
+        # sg_data, self._action_manager.UI_AREA_MAIN
+        # ).items():
+        # menu.add_group(actions, group_name)
+        # menu.addActions(actions)
+        if num_actions <= 0:
+            # if not actions:
+            # actions = [QtGui.QAction("No Actions", None)]
+            # self._action_menu.addAction(no_action)
+            menu.add_label("No Actions")
+
+        menu.exec_(view.mapToGlobal(pos))
 
     def closeEvent(self, event):
         """

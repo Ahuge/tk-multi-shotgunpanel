@@ -78,36 +78,3 @@ class ViewConfiguration(HookClass):
             template_str = item_def.get("body", "")
 
         return (template_str, sg_data)
-
-    def get_item_short_text(self, item, sg_data):
-        """
-        Returns the short text data to display for this model index item.
-
-        :return: The details data.
-        :rtype: list
-        """
-
-        template_str = None
-        # if is_folder:
-        #     # delegate_publish_list format_folder
-
-        #     # NOTE for simplicity at the moment, this does not handle getting the
-        #     # data from SG_ASSOCIATED_FIELD_ROLE
-
-        #     if sg_data:
-        #         template_str = (
-        #             "<b>%s</b><br/>"
-        #             "{type::showtype}"
-        #         ) % display
-
-        if sg_data:
-            # delegate_publish_list format_publish
-
-            # NOTE does not support "show subfolders mode"
-
-            template_str = (
-                "<b>{name|Unnamed} {[(]task::nolink[)]}</b><br/>"
-                "<small>{published_file_type::nolink}</small>"
-            )
-
-        return (template_str, sg_data)

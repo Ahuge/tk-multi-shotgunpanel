@@ -18,6 +18,42 @@ shotgun_model = sgtk.platform.import_framework(
     "tk-framework-shotgunutils", "shotgun_model"
 )
 ShotgunModel = shotgun_model.ShotgunModel
+ShotgunStandardItem = shotgun_model.ShotgunStandardItem
+
+
+class SgEntityItem(ShotgunStandardItem):
+    def data(self, *args, **kwargs):
+        role = args[0]
+        if role == SgEntityListingModel.VIEW_ITEM_TITLE_ROLE:
+            return self.exec_hook_method(
+                self.model().view_config_hook,
+                "get_item_title",
+                self,
+                self.get_sg_data(),
+            )
+
+        elif role == SgEntityListingModel.VIEW_ITEM_SUBTITLE_ROLE:
+            return self.exec_hook_method(
+                self.model().view_config_hook,
+                "get_item_subtitle",
+                self,
+                self.get_sg_data(),
+            )
+
+        elif role == SgEntityListingModel.VIEW_DETAILS_DATA_ROLE:
+            return self.exec_hook_method(
+                self.model().view_config_hook,
+                "get_item_details",
+                self,
+                self.get_sg_data(),
+            )
+
+        else:
+            return super(SgEntityItem, self).data(*args, **kwargs)
+
+    def exec_hook_method(self, hook, method_name, item, sg_data):
+        hook_method = getattr(hook, method_name)
+        return hook_method(item, sg_data) if hook_method else None
 
 
 class SgEntityListingModel(ShotgunModel):
@@ -66,39 +102,56 @@ class SgEntityListingModel(ShotgunModel):
             bg_task_manager=bg_task_manager,
         )
 
-    def _populate_item(self, item, sg_data):
+    def _create_item(self, parent, data_item):
         """
-        Override
         """
+        # standard_item = super(SgEntityListingModel, self)._create_item(parent, data_item)
+        # construct tree view node object
+        item = SgEntityItem()
+        # FIXME
+        # item.setEditable(data_item.field in self.__editable_fields)
+        item.setEditable(False)
 
-        def exec_hook_method(hook, method_name, item, sg_data):
-            hook_method = getattr(hook, method_name)
-            return hook_method(item, sg_data) if hook_method else None
+        self._update_item(item, data_item)
 
-        item.setData(
-            lambda: exec_hook_method(
-                self.view_config_hook, "get_item_title", item, sg_data
-            ),
-            SgEntityListingModel.VIEW_ITEM_TITLE_ROLE,
-        )
-        item.setData(
-            lambda: exec_hook_method(
-                self.view_config_hook, "get_item_subtitle", item, sg_data
-            ),
-            SgEntityListingModel.VIEW_ITEM_SUBTITLE_ROLE,
-        )
-        item.setData(
-            lambda: exec_hook_method(
-                self.view_config_hook, "get_item_details", item, sg_data
-            ),
-            SgEntityListingModel.VIEW_DETAILS_DATA_ROLE,
-        )
-        item.setData(
-            lambda: exec_hook_method(
-                self.view_config_hook, "get_item_short_text", item, sg_data
-            ),
-            SgEntityListingModel.VIEW_SHORT_TEXT_ROLE,
-        )
+        # run the finalizer
+        self._finalize_item(item)
+
+        # get complete row containing all columns for the current item
+        row = self._get_columns(item, data_item.is_leaf())
+
+        # and attach the node
+        parent.appendRow(row)
+
+        return item
+
+    # def _populate_item(self, item, sg_data):
+    #     """
+    #     Override
+    #     """
+
+    #     item.setData(
+    #         lambda: self.exec_hook_method(
+    #             self.view_config_hook, "get_item_title", item, sg_data
+    #         ),
+    #         SgEntityListingModel.VIEW_ITEM_TITLE_ROLE,
+    #     )
+    #     item.setData(
+    #         lambda: self.exec_hook_method(
+    #             self.view_config_hook, "get_item_subtitle", item, sg_data
+    #         ),
+    #         SgEntityListingModel.VIEW_ITEM_SUBTITLE_ROLE,
+    #     )
+    #     item.setData(
+    #         lambda: self.exec_hook_method(
+    #             self.view_config_hook, "get_item_details", item, sg_data
+    #         ),
+    #         SgEntityListingModel.VIEW_DETAILS_DATA_ROLE,
+    #     )
+
+    def exec_hook_method(self, hook, method_name, item, sg_data):
+        hook_method = getattr(hook, method_name)
+        return hook_method(item, sg_data) if hook_method else None
 
     ############################################################################################
     # public interface
