@@ -460,19 +460,8 @@ class AppDialog(QtGui.QWidget):
         delegate.details_role = SgEntityListingModel.VIEW_DETAILS_DATA_ROLE
         delegate.expand_role = ShotgunModel.VIEW_ITEM_HEIGHT_ROLE
         delegate.mouse_pos_role = ShotgunModel.VIEW_ITEM_MOUSE_POS_ROLE
-        delegate.row_width = 300
+        # delegate.row_width = 300
 
-        if self._app.get_setting("enable_context_switch"):
-            delegate.add_actions(
-                [
-                    {
-                        "name": "",
-                        "icon": ":/tk_multi_infopanel/pin.png",
-                        "callback": self.change_work_area,
-                    },
-                ],
-                ViewItemDelegate.BOTTOM_RIGHT,
-            )
         delegate.add_actions(
             [], ViewItemDelegate.BOTTOM_RIGHT,
         )
@@ -492,13 +481,26 @@ class AppDialog(QtGui.QWidget):
                     ),
                 },
                 # {
-                #     "name": "",
-                #     "icon": ":/tk_multi_infopanel/pin.png",
-                #     "callback": change_work_area
+                # "name": "",
+                # "icon": ":/tk_multi_infopanel/pin.png",
+                # "callback": self.change_work_area
                 # },
             ],
-            ViewItemDelegate.TOP_RIGHT,
+            ViewItemDelegate.BOTTOM_RIGHT,
+            # ViewItemDelegate.TOP_RIGHT,
         )
+        if self._app.get_setting("enable_context_switch"):
+            delegate.add_actions(
+                [
+                    {
+                        "name": "",
+                        "icon": ":/tk_multi_infopanel/pin.png",
+                        "callback": self.change_work_area,
+                        # "show_background": False
+                    },
+                ],
+                ViewItemDelegate.BOTTOM_RIGHT,
+            )
 
         delegate.hit_click_target.connect(self.change_cursor)
 
@@ -530,20 +532,10 @@ class AppDialog(QtGui.QWidget):
         sg_data = item.get_sg_data()
 
         menu = shotgun_menus.ShotgunMenu(view)
-        # menu = QtGui.QMenu(self)
-
         num_actions = self._action_manager.populate_menu(
             menu, sg_data, self._action_manager.UI_AREA_MAIN
         )
-        # for group_name, actions in self._action_manager._get_actions(
-        # sg_data, self._action_manager.UI_AREA_MAIN
-        # ).items():
-        # menu.add_group(actions, group_name)
-        # menu.addActions(actions)
         if num_actions <= 0:
-            # if not actions:
-            # actions = [QtGui.QAction("No Actions", None)]
-            # self._action_menu.addAction(no_action)
             menu.add_label("No Actions")
 
         menu.exec_(view.mapToGlobal(pos))
