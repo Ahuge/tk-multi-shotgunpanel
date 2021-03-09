@@ -78,3 +78,27 @@ class ViewConfiguration(HookClass):
             template_str = item_def.get("body", "")
 
         return (template_str, sg_data)
+
+    def get_item_actions(self, item, sg_data):
+        """
+        """
+
+        actions = {}
+
+        def hit(model, option, index, pos):
+            print("hit!")
+
+        if not self.parent.get_setting("enable_context_switch"):
+            actions["bottom-right"] = [
+                {"name": "", "icon": ":/tk_multi_infopanel/pin.png", "callback": hit,},
+            ]
+
+        actions["top-left"] = [
+            {
+                "name": "Top Left Button",
+                "callback": hit,
+                # "show_always": True
+            },
+        ]
+
+        return actions

@@ -78,6 +78,7 @@ class SgEntityListingModel(ShotgunModel):
     VIEW_ITEM_MOUSE_POS_ROLE = QtCore.Qt.UserRole + 113
     VIEW_ITEM_TITLE_ROLE = QtCore.Qt.UserRole + 114
     VIEW_ITEM_SUBTITLE_ROLE = QtCore.Qt.UserRole + 115
+    VIEW_ITEM_ACTIONS_ROLE = QtCore.Qt.UserRole + 116
 
     def __init__(self, entity_type, parent, bg_task_manager):
         """
@@ -147,6 +148,12 @@ class SgEntityListingModel(ShotgunModel):
                 self.view_config_hook, "get_item_details", item, sg_data
             ),
             SgEntityListingModel.VIEW_DETAILS_DATA_ROLE,
+        )
+        item.setData(
+            lambda: self.exec_hook_method(
+                self.view_config_hook, "get_item_actions", item, sg_data
+            ),
+            SgEntityListingModel.VIEW_ITEM_ACTIONS_ROLE,
         )
 
     def exec_hook_method(self, hook, method_name, item, sg_data):

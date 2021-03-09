@@ -336,12 +336,6 @@ class AppDialog(QtGui.QWidget):
         }
 
         # TEMP
-        # Delegate signal/slots
-        self._hover_index = None
-
-        def _model_reset():
-            self._hover_index = None
-
         # now initialize all tabs. This will add two model and delegate keys
         # to all the dicts
 
@@ -357,7 +351,7 @@ class AppDialog(QtGui.QWidget):
             tab_dict["model"] = ModelClass(
                 tab_dict["entity_type"], tab_dict["view"], self._task_manager
             )
-            tab_dict["model"].modelReset.connect(_model_reset)
+            # tab_dict["model"].modelReset.connect(_model_reset)
 
             # create proxy for sorting
             tab_dict["sort_proxy"] = QtGui.QSortFilterProxyModel(self)
@@ -458,6 +452,7 @@ class AppDialog(QtGui.QWidget):
         delegate.title_role = ShotgunModel.VIEW_ITEM_TITLE_ROLE
         delegate.subtitle_role = SgEntityListingModel.VIEW_ITEM_SUBTITLE_ROLE
         delegate.details_role = SgEntityListingModel.VIEW_DETAILS_DATA_ROLE
+        delegate.actions_role = SgEntityListingModel.VIEW_ITEM_ACTIONS_ROLE
         delegate.expand_role = ShotgunModel.VIEW_ITEM_HEIGHT_ROLE
         delegate.mouse_pos_role = ShotgunModel.VIEW_ITEM_MOUSE_POS_ROLE
         # delegate.row_width = 300
@@ -476,9 +471,9 @@ class AppDialog(QtGui.QWidget):
                 {
                     "name": "",
                     "icon": ":/tk_multi_infopanel/down_arrow.png",
-                    "callback": lambda pos, index: self.show_action_menu(
-                        tab_dict["view"], pos, index
-                    ),
+                    "callback": lambda action, model, option, index, pos, view=tab_dict[
+                        "view"
+                    ]: self.show_action_menu(view, pos, index),
                 },
                 # {
                 # "name": "",
@@ -496,28 +491,12 @@ class AppDialog(QtGui.QWidget):
                         "name": "",
                         "icon": ":/tk_multi_infopanel/pin.png",
                         "callback": self.change_work_area,
-                        # "show_background": False
                     },
                 ],
                 ViewItemDelegate.BOTTOM_RIGHT,
             )
 
-        delegate.hit_click_target.connect(self.change_cursor)
-
-    def change_cursor(self, pos, index, hit):
-        if not self._hover_index or not self._hover_index.isValid():
-            self._hover_index = index
-
-        if self._hover_index != index:
-            self._hover_index.model().setData(
-                self._hover_index, None, SgEntityListingModel.VIEW_ITEM_MOUSE_POS_ROLE,
-            )
-            self._hover_index = index
-
-        shape = QtCore.Qt.PointingHandCursor if hit else QtCore.Qt.ArrowCursor
-        self.setCursor(shape)
-
-    def change_work_area(self, pos, index):
+    def change_work_area(self, action, model, option, index, pos):
         source_index = index.model().mapToSource(index)
         source_model = index.model().sourceModel()
         item = source_model.itemFromIndex(source_index)
@@ -526,6 +505,10 @@ class AppDialog(QtGui.QWidget):
         self._change_work_area(sg_data["type"], sg_data["id"])
 
     def show_action_menu(self, view, pos, index):
+
+        name = view.objectName()
+        print(name)
+
         source_index = index.model().mapToSource(index)
         source_model = index.model().sourceModel()
         item = source_model.itemFromIndex(source_index)
