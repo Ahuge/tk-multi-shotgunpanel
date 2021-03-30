@@ -7,6 +7,8 @@
 # By accessing, using, copying or modifying this work you indicate your
 # agreement to the Shotgun Pipeline Toolkit Source Code License. All rights
 # not expressly granted therein are reserved by Shotgun Software Inc.
+import inspect
+import sys
 
 import sgtk
 import datetime
@@ -145,15 +147,30 @@ class ActionManager(QtCore.QObject):
                     )
                     sg_data["created_at"] = sg_timestamp
 
+                # Historically we had a different function signature for the "generate_actions"
+                # function on the actions_hook. To maintain backwards compatibility we check the
+                # parameters of the function and call the hook one way or another.
+                hook = self._app.create_hook_instance(self._app.get_setting("actions_hook"))
+
+                if sys.version_info.major == 3:
+                    generate_actions_args = inspect.getfullargspec(hook.generate_actions)[0]
+                else:
+                    generate_actions_args = inspect.getargspec(hook.generate_actions)[0]
+
                 action_defs = []
                 try:
-                    action_defs = self._app.execute_hook_method(
-                        "actions_hook",
-                        "generate_actions",
-                        sg_publish_data=sg_data,
-                        actions=actions_to_evaluate,
-                        ui_area=ui_area_str,
-                    )
+                    if 'sg_publish_data' in generate_actions_args:
+                        action_defs = hook.generate_actions(
+                            sg_publish_data=sg_data,
+                            actions=actions_to_evaluate,
+                            ui_area=ui_area_str,
+                        )
+                    else:
+                        action_defs = hook.generate_actions(
+                            sg_data=sg_data,
+                            actions=actions_to_evaluate,
+                            ui_area=ui_area_str,
+                        )
                 except Exception:
                     self._app.log_exception("Could not execute generate_actions hook.")
 
@@ -222,15 +239,29 @@ class ActionManager(QtCore.QObject):
             "Calling action hook for %s. "
             "Params: %s. Sg data: %s" % (action_name, params, sg_data)
         )
+        # Historically we had a different function signature for the "generate_actions"
+        # function on the actions_hook. To maintain backwards compatibility we check the
+        # parameters of the function and call the hook one way or another.
+        hook = self._app.create_hook_instance(self._app.get_setting("actions_hook"))
+
+        if sys.version_info.major == 3:
+            execute_action_args = inspect.getfullargspec(hook.execute_action)[0]
+        else:
+            execute_action_args = inspect.getargspec(hook.execute_action)[0]
 
         try:
-            self._app.execute_hook_method(
-                "actions_hook",
-                "execute_action",
-                name=action_name,
-                params=params,
-                sg_publish_data=sg_data,
-            )
+            if 'sg_publish_data' in execute_action_args:
+                hook.execute_action(
+                    name=action_name,
+                    params=params,
+                    sg_publish_data=sg_data,
+                )
+            else:
+                hook.execute_action(
+                    name=action_name,
+                    params=params,
+                    sg_data=sg_data,
+                )
 
             # refresh UI
             self.refresh_request.emit()
